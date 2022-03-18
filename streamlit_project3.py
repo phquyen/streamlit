@@ -36,9 +36,9 @@ X_test = None
 sentiment_model = None
 count_model = None
 # 1. Read data
-# df = pd.read_csv('data_Foody_concat.csv', encoding='utf-8')
-# df['target'] = 1 # negative
-# df['target'][df['review_score']>=6.5] = 0
+df = pd.read_csv('data_Foody_concat.csv', encoding='utf-8')
+df['target'] = 1 # negative
+df['target'][df['review_score']>=6.5] = 0
 #--------------
 # GUI
 st.title("DATA SCIENCE PROJECT")
@@ -114,6 +114,7 @@ if uploaded_file is not None:
      with open('upload_count_model.pkl', 'wb') as file:  
           pickle.dump(count_model, file)
 
+
 else:
      # load pretrained model and stats
      data = pd.read_csv("data_test_streamlit.csv", encoding='utf-8')
@@ -136,6 +137,7 @@ else:
           roc = stats['roc']
           y_test = np.array(stats['y_test'])
           X_test = np.array(stats['X_test'])
+          del stats
 
 # roc = roc_auc_score(y_test, model.predict_proba(X_test), multi_class="ovo") - Cho mul class (3 class)
 
@@ -151,11 +153,11 @@ if choice == 'Business Objective':
      st.write("""###### Xây dựng mô hình dự đoán giúp nhà hàng có thể biết được những phản hồi nhanh chóng của khách hàng về sản phẩm hay dịch vụ của họ (tích cực hay tiêu cực). Giúp cải thiện tình hình hoạt động của nhà hàng cũng như mang đến trải nghiệm tốt cho khách hàng.
      """)
      st.write('### Overview:')
-     # st.dataframe(df[['restaurant','review_text','review_score']].head(3))
-     # st.dataframe(df[['restaurant','review_text','review_score']].tail(3))
+     st.dataframe(df[['restaurant','review_text','review_score']].head(3))
+     st.dataframe(df[['restaurant','review_text','review_score']].tail(3))
 
-     # figov = sns.displot(data = df, x='review_score', palette="Set3")
-     # st.pyplot(figov)
+     figov = sns.displot(data = df, x='review_score', palette="Set3")
+     st.pyplot(figov)
      st.write('Theo biểu đồ, dữ liệu được đánh giá khá tích cực, chủ yếu từ mức 6.5 hoặc 7.0 trở lên.')
      # figov1 = sns.countplot(data = df[['target']], x='target')
      
