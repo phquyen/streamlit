@@ -48,7 +48,6 @@ st.write("### POSITIVE OR NEGATIVE")
 # Upload file
 uploaded_file = st.file_uploader('Choose a file', type=['csv'])
 
-# if 1:
 if uploaded_file is not None:
      data = pd.read_csv(uploaded_file, encoding='utf-8')
      # data = pd.read_csv("data_test_streamlit.csv", encoding='utf-8')
@@ -114,8 +113,6 @@ if uploaded_file is not None:
 
      with open('upload_count_model.pkl', 'wb') as file:  
           pickle.dump(count_model, file)
-
-
 
 else:
      # load pretrained model and stats
