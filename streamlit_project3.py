@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import ujson as json
 #from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import CountVectorizer
@@ -14,13 +15,28 @@ from sklearn import metrics
 import seaborn as sns
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import RocCurveDisplay
+from time import time
+
+
+stime = time()
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
+df = None
+data = None
+score_train = None
+score_test = None
+acc = None
+cm = None
+cr = None
+y_prob = None
+roc = None
+y_test = None
+X_test = None
+sentiment_model = None
+count_model = None
 # 1. Read data
 df = pd.read_csv('data_Foody_concat.csv', encoding='utf-8')
-data = pd.read_csv("data_test_streamlit.csv", encoding='utf-8')
-
 df['target'] = 1 # negative
 df['target'][df['review_score']>=6.5] = 0
 #--------------
@@ -31,68 +47,104 @@ st.write("### POSITIVE OR NEGATIVE")
 
 # Upload file
 uploaded_file = st.file_uploader('Choose a file', type=['csv'])
+
+# if 1:
 if uploaded_file is not None:
-    data = pd.read_csv(uploaded_file, encoding='utf-8')
-    data.to_csv('review_new.csv', index=False)
+     data = pd.read_csv(uploaded_file, encoding='utf-8')
+     # data = pd.read_csv("data_test_streamlit.csv", encoding='utf-8')
+     data.to_csv('review_new.csv', index=False)
 
-# 2. Data pre-processing
-source = data['review_text_t1']
-target = data['target']
+     # 2. Data pre-processing
+     source = data['review_text_t1']
+     target = data['target']
 
-# target = target.replace("Negative", 0)
-# target = target.replace("Neutral", 1)
-# target = target.replace('Positive',2)
+     # target = target.replace("Negative", 0)
+     # target = target.replace("Neutral", 1)
+     # target = target.replace('Positive',2)
 
-text_data = np.array(source)
+     text_data = np.array(source)
 
-count = CountVectorizer(max_features=3500) 
-count.fit(text_data)
-bag_of_words = count.transform(text_data)
+     count_model = CountVectorizer(max_features=3500) 
+     count_model.fit(text_data)
+     bag_of_words = count_model.transform(text_data)
 
-X = bag_of_words.toarray()
+     X = bag_of_words.toarray()
 
-y = np.array(target)
+     y = np.array(target)
 
-# 3. Build model
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=0) 
+     # 3. Build model
+     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=0) 
 
-clf = LogisticRegression()
-model = clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test)
+     clf = LogisticRegression()
+     sentiment_model = clf.fit(X_train, y_train)
+     y_pred = clf.predict(X_test)
 
-#4. Evaluate model
-score_train = model.score(X_train,y_train)
-score_test = model.score(X_test,y_test)
-acc = accuracy_score(y_test,y_pred)
-cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+     #4. Evaluate model
+     score_train = sentiment_model.score(X_train,y_train)
+     score_test = sentiment_model.score(X_test,y_test)
+     acc = accuracy_score(y_test,y_pred)
+     cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
 
-cr = classification_report(y_test, y_pred)
+     cr = classification_report(y_test, y_pred)
 
-y_prob = model.predict_proba(X_test)
+     y_prob = sentiment_model.predict_proba(X_test)
 
-roc = roc_auc_score(y_test, model.predict_proba(X_test)[:,1])
+     roc = roc_auc_score(y_test, sentiment_model.predict_proba(X_test)[:,1])
+
+     # with open('pretrained_stats.json', 'w') as f:
+     #      stats = {
+     #           'score_train': score_train,
+     #           'score_test': score_test,
+     #           'acc': acc,
+     #           'cm': cm.tolist(),
+     #           'cr': cr,
+     #           'y_prob': y_prob.tolist(),
+     #           'roc': roc,
+     #           'y_test': y_test.tolist(),
+     #           'X_test': X_test.tolist()
+     
+     #      }
+     #      json.dump(stats, f)
+     #5. Save models
+     # luu model classication
+     with open('upload_sentiment_model.pkl', 'wb') as file:  
+          pickle.dump(sentiment_model, file)
+     
+     # luu model CountVectorizer (count_model)
+
+     with open('upload_count_model.pkl', 'wb') as file:  
+          pickle.dump(count_model, file)
+
+
+
+else:
+     # load pretrained model and stats
+     data = pd.read_csv("data_test_streamlit.csv", encoding='utf-8')
+     #6. Load models 
+     # Đọc model
+     with open('pretrained_sentiment_model.pkl', 'rb') as file:  
+          sentiment_model = pickle.load(file)
+     # doc model count len
+     with open('pretrained_count_model.pkl', 'rb') as file:  
+          count_model = pickle.load(file)  
+     # Read training stats
+     with open('pretrained_stats.json', 'r') as f:
+          stats = json.load(f)
+          score_train = stats['score_train']
+          score_test = stats['score_test']
+          acc = stats['acc']
+          cm = np.array(stats['cm'])
+          cr = stats['cr']
+          y_prob = np.array(stats['y_prob'])
+          roc = stats['roc']
+          y_test = np.array(stats['y_test'])
+          X_test = np.array(stats['X_test'])
+
 # roc = roc_auc_score(y_test, model.predict_proba(X_test), multi_class="ovo") - Cho mul class (3 class)
 
-#5. Save models
-# luu model classication
-pkl_filename = "sentiment_model.pkl"  
-with open(pkl_filename, 'wb') as file:  
-     pickle.dump(model, file)
-  
-# luu model CountVectorizer (count)
-pkl_count = "count_model.pkl"  
-with open(pkl_count, 'wb') as file:  
-    pickle.dump(count, file)
+print(f'etime: {time() - stime}')
 
 
-#6. Load models 
-# Đọc model
-# import pickle
-with open(pkl_filename, 'rb') as file:  
-     sentiment_model = pickle.load(file)
-# doc model count len
-with open(pkl_count, 'rb') as file:  
-     count_model = pickle.load(file)
 
 # GUI
 menu = ['Business Objective','Build Project','New Prediction']
@@ -156,15 +208,15 @@ elif choice == 'Build Project':
      # st.pyplot(fig)
      class_names = ['target', 'review_text_t1']
      st.subheader("Confusion Matrix") 
-     plot_confusion_matrix(model, X_test, y_test, display_labels=class_names)
+     plot_confusion_matrix(sentiment_model, X_test, y_test, display_labels=class_names)
      st.pyplot()
 
      st.subheader("ROC Curve") 
-     plot_roc_curve(model, X_test, y_test)
+     plot_roc_curve(sentiment_model, X_test, y_test)
      st.pyplot()
 
      st.subheader("Precision-Recall Curve")
-     plot_precision_recall_curve(model, X_test, y_test)
+     plot_precision_recall_curve(sentiment_model, X_test, y_test)
      st.pyplot()
 
      # ## Negative
